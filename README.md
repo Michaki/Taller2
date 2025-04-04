@@ -33,10 +33,8 @@ This is a FastAPI project. Follow the steps below to set up and run the applicat
 1. Start the FastAPI server:
 
    ```bash
-   uvicorn main:app --reload
+   python -m uvicorn app.main:app --reload
    ```
-
-   Replace `main:app` with the appropriate module and app instance if different.
 
 2. Open your browser and navigate to:
 
@@ -55,6 +53,36 @@ Run the tests using:
 ```bash
 pytest
 ```
+
+## Environment Variables
+
+This project uses environment variables for configuration. Create a `.env` file in the root directory and add your environment variables there. For example:
+
+```env
+DATABASE_URL=postgresql://user:password@localhost/dbname
+SECRET_KEY=your_secret_key
+```
+
+## Database Setup
+
+1. Install Docker and Docker Compose if you haven't already.
+2. Run the following command to start the elasticsearch container:
+
+   ```bash
+   docker-compose up -d
+   ```
+
+Note: this has to be run in the root directory of the project.
+
+## Database Migrations
+
+It needs to run migrations to set up the database seed data and index, to run the migrations, use the following command:
+
+```bash
+python manage.py all
+```
+
+You need to have the `manage.py` file in the root directory of the project. This file is used to manage database migrations and other tasks.
 
 ## License
 

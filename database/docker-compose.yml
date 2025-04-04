@@ -1,0 +1,60 @@
+services:
+  elasticsearch1:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.8.0
+    container_name: es-node1
+    environment:
+      - node.name=es-node1
+      - cluster.name=es-docker-cluster
+      - discovery.seed_hosts=es-node2,es-node3
+      - cluster.initial_master_nodes=es-node1,es-node2,es-node3
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - 9200:9200
+    networks:
+      - es-net
+
+  elasticsearch2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.8.0
+    container_name: es-node2
+    environment:
+      - node.name=es-node2
+      - cluster.name=es-docker-cluster
+      - discovery.seed_hosts=es-node1,es-node3
+      - cluster.initial_master_nodes=es-node1,es-node2,es-node3
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - es-net
+
+  elasticsearch3:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.8.0
+    container_name: es-node3
+    environment:
+      - node.name=es-node3
+      - cluster.name=es-docker-cluster
+      - discovery.seed_hosts=es-node1,es-node2
+      - cluster.initial_master_nodes=es-node1,es-node2,es-node3
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - es-net
+
+networks:
+  es-net:
+    driver: bridge
