@@ -4,4 +4,3 @@ from pydantic import BaseModel, Field
 class SensorData(BaseModel):
     temperature: float = Field(..., description="Temperature reading from sensor")
     humidity: float = Field(None, description="Optional humidity reading")
-    # Add any additional fields as needed
