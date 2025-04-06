@@ -1,8 +1,13 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.api.endpoints import sensor, websocket
 import asyncio
 from contextlib import asynccontextmanager
 from app.streams.stream_consumer import consume_sensor_data
+
+origins = [
+    "http://localhost:5173",  
+]
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -17,6 +22,16 @@ async def lifespan(app: FastAPI):
         pass
 
 app = FastAPI(lifespan=lifespan)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,           # Allow these origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # Include REST and WebSocket routes
 app.include_router(sensor.router, prefix="/sensors")
