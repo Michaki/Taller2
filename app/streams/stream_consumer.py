@@ -1,14 +1,12 @@
-# app/streams/stream_consumer.py
-
 import json
+from datetime import datetime
 from aiokafka import AIOKafkaConsumer
 from app.api.endpoints.websocket import manager
-from app.repositories.switch_repository import save_alert_log, save_switch_data
+from app.utils.thresholds import determine_status
 
 async def consume_topics_for_websocket():
     """
-    Consumes messages from two Kafka topics ("alerts_topic" and "healthy_topic"),
-    persists each message to the appropriate Elasticsearch index, and broadcasts the message via WebSocket.
+    Consumes messages from topics (like alerts_topic and healthy_topic) and also sends a topology update.
     """
     topics = ["alerts_topic", "healthy_topic"]
     consumer = AIOKafkaConsumer(
@@ -22,13 +20,33 @@ async def consume_topics_for_websocket():
     try:
         async for msg in consumer:
             message = msg.value
-            # Persist the message to Elasticsearch based on its status:
-            if msg.topic == "alerts_topic":
-                await save_alert_log(message)
-            else:
-                await save_switch_data(message)
-            # Broadcast the message to all connected WebSocket clients.
-            await manager.broadcast(message)
+            # Determine the switch's state (if not already computed)
+            if "status" not in message:
+                status = determine_status(
+                    message.get("bandwidth_usage", 0),
+                    message.get("packet_loss", 0),
+                    message.get("latency", 0),
+                    alert_mode=True
+                )
+                message["status"] = status
+
+            # Broadcast the original message (alert or healthy update)
+            await manager.broadcast({
+                "event": "data_update",
+                "data": message,
+                "timestamp": datetime.now().isoformat()
+            })
+            # Additionally, broadcast topology updates using switch_id and parent_switch_id.
+            topology_message = {
+                "event": "topology_update",
+                "data": {
+                    "switch_id": message.get("switch_id"),
+                    "parent_switch_id": message.get("parent_switch_id"),
+                    "state": message.get("status")
+                },
+                "timestamp": datetime.now().isoformat()
+            }
+            await manager.broadcast(topology_message)
     except Exception as e:
         print("Error in consuming topics:", e)
     finally:
