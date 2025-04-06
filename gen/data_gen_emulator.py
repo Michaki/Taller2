@@ -13,7 +13,7 @@ def generate_initial_switches():
     """
     parent_switches = [str(uuid4()) for _ in range(4)]
     switches = []
-    for i in range(20):
+    for _ in range(20):
         # 20% chance that a switch is its own parent
         is_parent = random.random() < 0.2
         switch_id = str(uuid4())
@@ -40,7 +40,7 @@ def update_switches(switches):
         sw["timestamp"] = datetime.now(timezone.utc).isoformat()
 
 def main():
-    kafka_bootstrap_servers = "kafka:9092"  # Using the Kafka container's network alias
+    kafka_bootstrap_servers = "localhost:9092"  # Updated for local connectivity
     topic = "switch_data_topic"
     producer = KafkaProducer(
         bootstrap_servers=[kafka_bootstrap_servers],
@@ -65,6 +65,7 @@ def main():
         print("Data generator stopped by user.")
     finally:
         producer.close()
+
 
 if __name__ == '__main__':
     main()
