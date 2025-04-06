@@ -2,7 +2,7 @@ import sys
 import argparse
 import asyncio
 
-from database.migrations.m001_create_sensor_index import create_indexes
+from database.migrations.m001_create_sensor_index import create_indices
 from database.seeds.seed_sensor_data import seed_sensor_data
 
 def main():
@@ -17,13 +17,13 @@ def main():
 
     if args.command == "migrate":
         print("Running migrations...")
-        asyncio.run(create_indexes())
+        asyncio.run(create_indices())
     elif args.command == "seed":
         print("Running seed scripts...")
         asyncio.run(seed_sensor_data())
     elif args.command == "all":
         print("Running migrations...")
-        asyncio.run(create_indexes())
+        asyncio.run(create_indices())
         print("Running seed scripts...")
         asyncio.run(seed_sensor_data())
     else:
