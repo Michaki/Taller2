@@ -1,0 +1,13 @@
+# Dockerfile.data_gen
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Copy your data generator code. Assume it's named data_gen.py.
+COPY data_gen.py .
+
+# Install necessary packages (adjust if needed)
+RUN pip install kafka-python
+
+# Run the data generator script.
+CMD ["python", "data_gen.py"]

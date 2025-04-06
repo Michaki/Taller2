@@ -40,7 +40,7 @@ def update_switches(switches):
         sw["timestamp"] = datetime.now(timezone.utc).isoformat()
 
 def main():
-    kafka_bootstrap_servers = "localhost:9092"  # Updated for local connectivity
+    kafka_bootstrap_servers = "kafka:9092"  # Updated for local connectivity
     topic = "switch_data_topic"
     producer = KafkaProducer(
         bootstrap_servers=[kafka_bootstrap_servers],

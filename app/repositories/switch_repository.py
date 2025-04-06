@@ -14,3 +14,24 @@ async def get_all_aggregated_switch_data():
 async def get_aggregated_switch_data_count():
     response = await es.count(index="aggregated_switch_data")
     return response['count']
+
+async def get_recent_alert_logs_from_es(time_window: int = 300):
+    """
+    Query Elasticsearch to fetch alert logs from the past `time_window` seconds.
+    Adjust the index and query as needed.
+    """
+    query = {
+        "query": {
+            "range": {
+                "timestamp": {
+                    "gte": f"now-{time_window}s"
+                }
+            }
+        },
+        "sort": [{"timestamp": {"order": "desc"}}]
+    }
+    result = await es.search(index="alert_logs", body=query)
+    hits = result["hits"]["hits"]
+    # Extract the _source field from each hit
+    logs = [hit["_source"] for hit in hits]
+    return logs

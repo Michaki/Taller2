@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   elasticsearch1:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.8.0
@@ -77,12 +79,45 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    networks:
+      - dev-net
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9092"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  data_gen:
+    build:
+      context: ./gen
+      dockerfile: Dockerfile.data_gen
+    container_name: data_gen
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      TOPIC: switch_data_topic
+    networks:
+      - dev-net
+
+  kafka_stream:
+    build:
+      context: ./kafka_stream
+      dockerfile: Dockerfile.kafka_stream
+    container_name: kafka_stream
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SOURCE_TOPIC: switch_data_topic
+      ALERTS_TOPIC: alerts_topic
+      HEALTHY_TOPIC: healthy_topic
     networks:
       - dev-net
 
