@@ -1,66 +1,78 @@
 import json
+import asyncio
 from datetime import datetime, timezone
 from aiokafka import AIOKafkaConsumer
-from app.repositories.sensor_repository import save_aggregated_sensor_data
+from app.repositories.switch_repository import save_aggregated_switch_data
 
-# Parameters for aggregation
-BATCH_SIZE = 5
-TEMPERATURE_THRESHOLD = 80.0  # If average temperature exceeds this, an alert is raised
-buffer = []  # Buffer to store incoming sensor data
+# Buffer will now be a dictionary keyed by parent_switch_id
+buffer = {}
 
-async def process_buffer():
-    """Aggregate the buffered sensor data and save the augmented result to Elasticsearch."""
-    if not buffer:
-        return
-    count = len(buffer)
-    total_temp = sum(item.get("temperature", 0) for item in buffer)
-    total_humidity = sum(item.get("humidity", 0) for item in buffer)
-    avg_temp = total_temp / count
-    avg_humidity = total_humidity / count
-    min_temp = min(item.get("temperature", 0) for item in buffer)
-    max_temp = max(item.get("temperature", 0) for item in buffer)
+# Define thresholds for status determination
+BANDWIDTH_THRESHOLD = 800  # Example value in Mbps
+PACKET_LOSS_THRESHOLD = 2  # in percentage
+LATENCY_THRESHOLD = 80     # in ms
+
+def determine_status(avg_bandwidth: float, avg_packet_loss: float, avg_latency: float) -> str:
+    # A simple rule: if any metric exceeds its threshold, set status to "unhealthy"; if near threshold, "warning"
+    if avg_bandwidth > BANDWIDTH_THRESHOLD or avg_packet_loss > PACKET_LOSS_THRESHOLD or avg_latency > LATENCY_THRESHOLD:
+        if (avg_bandwidth > BANDWIDTH_THRESHOLD * 1.2 or 
+            avg_packet_loss > PACKET_LOSS_THRESHOLD * 1.5 or 
+            avg_latency > LATENCY_THRESHOLD * 1.2):
+            return "unhealthy"
+        return "warning"
+    return "healthy"
+
+async def process_buffer_for_parent(parent_id: str):
+    records = buffer[parent_id]
+    count = len(records)
+    total_bandwidth = sum(item["bandwidth_usage"] for item in records)
+    total_packet_loss = sum(item["packet_loss"] for item in records)
+    total_latency = sum(item["latency"] for item in records)
     
-    # Augment the aggregated data with additional info and alert flag
+    avg_bandwidth = total_bandwidth / count
+    avg_packet_loss = total_packet_loss / count
+    avg_latency = total_latency / count
+
+    status = determine_status(avg_bandwidth, avg_packet_loss, avg_latency)
+    alert = status != "healthy"
+
     aggregated_data = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "parent_switch_id": parent_id,
         "count": count,
-        "avg_temperature": avg_temp,
-        "avg_humidity": avg_humidity,
-        "min_temperature": min_temp,
-        "max_temperature": max_temp,
-        "alert": avg_temp > TEMPERATURE_THRESHOLD,
-        "raw_data": buffer.copy() 
+        "avg_bandwidth": avg_bandwidth,
+        "avg_packet_loss": avg_packet_loss,
+        "avg_latency": avg_latency,
+        "status": status,
+        "alert": alert,
+        "raw_data": records.copy()
     }
-    
-    # Save aggregated data to Elasticsearch
-    await save_aggregated_sensor_data(aggregated_data)
-    print("Saved aggregated data:", aggregated_data)
-    
-    # Clear the buffer after processing
-    buffer.clear()
+    await save_aggregated_switch_data(aggregated_data)
+    print("Saved aggregated switch data:", aggregated_data)
+    buffer[parent_id] = []  # clear for that parent
 
-async def consume_sensor_data():
-    """
-    Consume sensor data from Kafka, aggregate data in batches, and save augmented results.
-    """
+async def consume_switch_data():
     consumer = AIOKafkaConsumer(
-        "sensor_data_topic",
-        bootstrap_servers="localhost:9092",
-        group_id="sensor_consumer_group"
+        "switch_data_topic",
+        bootstrap_servers="kafka:9092",
+        group_id="switch_consumer_group"
     )
     await consumer.start()
     try:
         async for msg in consumer:
-            # Decode and parse the sensor message
             data = json.loads(msg.value.decode("utf-8"))
-            buffer.append(data)
-            # Once the buffer reaches the batch size, process the aggregation
-            if len(buffer) >= BATCH_SIZE:
-                await process_buffer()
+            parent_id = data["parent_switch_id"]
+            if parent_id not in buffer:
+                buffer[parent_id] = []
+            buffer[parent_id].append(data)
+            # Process aggregation when a batch size is reached (or based on a time interval)
+            if len(buffer[parent_id]) >= 5:
+                await process_buffer_for_parent(parent_id)
     except Exception as e:
-        print("Error in Kafka consumer:", e)
+        print("Error in switch consumer:", e)
     finally:
-        # Process any remaining messages before shutting down
-        if buffer:
-            await process_buffer()
+        # Process any remaining data
+        for parent_id in list(buffer.keys()):
+            if buffer[parent_id]:
+                await process_buffer_for_parent(parent_id)
         await consumer.stop()

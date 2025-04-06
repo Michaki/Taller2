@@ -1,39 +1,69 @@
 import random
-import json
 import time
+import json
 from datetime import datetime, timezone
+from uuid import uuid4
 from kafka import KafkaProducer
 
-def generate_sensor_data():
-    """Generate a random sensor reading."""
-    return {
-        "temperature": round(random.uniform(60.0, 100.0), 2),
-        "humidity": round(random.uniform(30.0, 80.0), 2),
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    }
+def generate_initial_switches():
+    """
+    Generate 20 initial switch records.
+    We'll designate 4 parent switches and assign the rest to one of these.
+    Each switch record has a unique switch_id and a parent_switch_id.
+    """
+    parent_switches = [str(uuid4()) for _ in range(4)]
+    switches = []
+    for i in range(20):
+        # 20% chance that a switch is its own parent
+        is_parent = random.random() < 0.2
+        switch_id = str(uuid4())
+        parent_switch_id = switch_id if is_parent else random.choice(parent_switches)
+        switch_data = {
+            "switch_id": switch_id,
+            "parent_switch_id": parent_switch_id,
+            "bandwidth_usage": round(random.uniform(10, 1000), 2),  # in Mbps
+            "packet_loss": round(random.uniform(0, 5), 2),           # in %
+            "latency": round(random.uniform(1, 100), 2),             # in ms
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        switches.append(switch_data)
+    return switches
+
+def update_switches(switches):
+    """
+    Update each switch's metrics slightly to simulate real-time fluctuations.
+    """
+    for sw in switches:
+        sw["bandwidth_usage"] = round(sw["bandwidth_usage"] * random.uniform(0.95, 1.05), 2)
+        sw["packet_loss"] = round(sw["packet_loss"] * random.uniform(0.95, 1.05), 2)
+        sw["latency"] = round(sw["latency"] * random.uniform(0.95, 1.05), 2)
+        sw["timestamp"] = datetime.now(timezone.utc).isoformat()
 
 def main():
-    # Configure Kafka producer; adjust bootstrap_servers if needed.
+    kafka_bootstrap_servers = "kafka:9092"  # Using the Kafka container's network alias
+    topic = "switch_data_topic"
     producer = KafkaProducer(
-        bootstrap_servers=['localhost:9092'],
-        value_serializer=lambda v: json.dumps(v).encode('utf-8')
+        bootstrap_servers=[kafka_bootstrap_servers],
+        value_serializer=lambda v: json.dumps(v).encode("utf-8")
     )
     
-    topic = "sensor_data_topic"
-    print(f"Starting data generation for topic '{topic}'...")
+    # Initialize our 20 switch records
+    switches = generate_initial_switches()
+    print("Initialized switches:")
+    for sw in switches:
+        print(sw)
     
     try:
         while True:
-            sensor_data = generate_sensor_data()
-            # Publish the sensor data to Kafka
-            producer.send(topic, sensor_data)
-            print(f"Sent: {sensor_data}")
-            # Sleep for a couple of seconds before sending the next record
-            time.sleep(2)
+            update_switches(switches)
+            for sw in switches:
+                producer.send(topic, sw)
+                print("Sent update for switch", sw["switch_id"])
+            producer.flush()
+            time.sleep(2)  # Wait 2 seconds before sending the next update batch
     except KeyboardInterrupt:
-        print("Data generation stopped by user.")
+        print("Data generator stopped by user.")
     finally:
-        producer.flush()
         producer.close()
 
 if __name__ == '__main__':

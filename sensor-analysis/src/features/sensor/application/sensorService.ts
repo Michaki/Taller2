@@ -1,6 +1,6 @@
-import type { AggregatedSensorData } from "../domain/AggregatedSensorData";
-import { fetchSensors } from "../infrastructure/sensorAPI";
+import { fetchSwitches } from "../infrastructure/sensorAPI";
+import type { AggregatedSwitchData } from "../domain/AggregatedSensorData";
 
-export async function getSensorData(): Promise<AggregatedSensorData[]> {
-  return fetchSensors();
+export async function getSwitchData(): Promise<AggregatedSwitchData[]> {
+  return fetchSwitches();
 }

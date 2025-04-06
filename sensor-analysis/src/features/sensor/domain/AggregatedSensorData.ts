@@ -1,13 +1,12 @@
-import type { Sensor } from "./Sensor";
-
-export interface AggregatedSensorData {
+export interface AggregatedSwitchData {
   id: string;
   timestamp: string;
+  parent_switch_id: string;
   count: number;
-  avg_temperature: number;
-  avg_humidity: number;
-  min_temperature: number;
-  max_temperature: number;
+  avg_bandwidth: number;
+  avg_packet_loss: number;
+  avg_latency: number;
+  status: "healthy" | "warning" | "unhealthy";
   alert: boolean;
-  raw_data: Sensor[];
+  raw_data: any[];
 }
