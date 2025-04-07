@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import * as d3 from 'd3';
   import { sensorService } from '../../features/sensor/application/sensorService';
-  import { sensorWS, type TopologyUpdateCallback } from '../../features/sensor/infrastructure/sensorWS';
+  import { sensorWS } from '../../features/sensor/infrastructure/sensorWS';
 
   interface Node {
     id: string;
@@ -22,8 +22,6 @@
   let topology: { nodes: Node[]; edges: Edge[] } = { nodes: [], edges: [] };
   let svgElement: SVGSVGElement;
   let simulation: d3.Simulation<any, undefined>;
-
-  // Zoom behavior instance
   let zoom: d3.ZoomBehavior<Element, unknown>;
 
   async function loadTopology() {
@@ -32,19 +30,20 @@
   }
 
   function renderGraph() {
-    const width = 800;
-    const height = 600;
+    // Use full viewport size for the SVG container
+    const width = window.innerWidth;
+    const height = window.innerHeight - 120; // leave some room for header
     const svg = d3.select(svgElement)
       .attr('width', width)
       .attr('height', height);
 
-    // Clear previous content
+    // Clear any previous content
     svg.selectAll('*').remove();
 
-    // Create a container group that will be zoomed and panned
+    // Create a group container that will be zoomed and panned
     const container = svg.append('g');
 
-    // Set up zoom behavior
+    // Setup zoom behavior on the container
     zoom = d3.zoom()
       .scaleExtent([0.5, 3])
       .on('zoom', (event) => {
@@ -52,23 +51,22 @@
       });
     (svg as d3.Selection<SVGSVGElement, unknown, null, undefined>).call(zoom as unknown as (selection: d3.Selection<SVGSVGElement, unknown, null, undefined>) => void);
 
-    // Set up simulation with nodes and links
     simulation = d3.forceSimulation(topology.nodes)
-      .force('link', d3.forceLink(topology.edges).id((d: any) => d.id).distance(100))
+      .force('link', d3.forceLink(topology.edges).id((d: any) => d.id).distance(120))
       .force('charge', d3.forceManyBody().strength(-300))
       .force('center', d3.forceCenter(width / 2, height / 2));
 
-    // Draw links inside container
+    // Draw links
     const link = container.append('g')
-      .attr('stroke', '#999')
-      .attr('stroke-opacity', 0.6)
+      .attr('stroke', '#bbb')
+      .attr('stroke-opacity', 0.8)
       .selectAll('line')
       .data(topology.edges)
       .enter()
       .append('line')
-      .attr('stroke-width', 2);
+      .attr('stroke-width', 1.5);
 
-    // Draw nodes inside container
+    // Draw nodes
     const node = container.append('g')
       .attr('stroke', '#fff')
       .attr('stroke-width', 1.5)
@@ -76,26 +74,28 @@
       .data(topology.nodes)
       .enter()
       .append('circle')
-      .attr('r', 10)
+      .attr('r', 8)
       .attr('fill', d => {
-        if (d.nodeState === 'healthy') return 'green';
-        if (d.nodeState === 'warning') return 'yellow';
-        if (d.nodeState === 'critical') return 'red';
-        return 'gray';
+        if (d.nodeState === 'healthy') return '#34D399';
+        if (d.nodeState === 'warning') return '#FBBF24';
+        if (d.nodeState === 'critical') return '#F87171';
+        return '#9CA3AF';
       })
       .call(d3.drag<SVGCircleElement, Node>()
         .on('start', dragstarted)
         .on('drag', dragged)
         .on('end', dragended));
 
-    // Add labels inside container
+    // Add labels
     const labels = container.append('g')
       .selectAll('text')
       .data(topology.nodes)
       .enter()
       .append('text')
-      .attr('dy', -15)
+      .attr('dy', -12)
       .attr('text-anchor', 'middle')
+      .attr('fill', '#4B5563')
+      .attr('font-size', '11px')
       .text(d => d.label);
 
     simulation.on('tick', () => {
@@ -136,16 +136,16 @@
       node.nodeState = data.state as Node["nodeState"];
       d3.select(svgElement)
         .selectAll('circle')
-        .filter((d: unknown) => (d as Node).id === data.switch_id)
+        .filter((d) => (d as Node).id === data.switch_id)
         .transition()
         .duration(500)
         .attr('fill', data.state === 'healthy'
-          ? 'green'
+          ? '#34D399'
           : data.state === 'warning'
-          ? 'yellow'
+          ? '#FBBF24'
           : data.state === 'critical'
-          ? 'red'
-          : 'gray');
+          ? '#F87171'
+          : '#9CA3AF');
     }
   }
 
@@ -155,15 +155,17 @@
   });
 </script>
 
-<div class="min-h-screen bg-gray-50 p-6">
+<div class="min-h-screen bg-gray-100">
   <!-- Header -->
-  <header class="mb-8">
-    <h1 class="text-3xl font-semibold text-gray-800">Network Topology</h1>
-    <p class="text-gray-600">Real-time visualization of switch relationships (drag, pan, and zoom enabled)</p>
+  <header class="p-4 text-center">
+    <h1 class="text-4xl font-semibold text-gray-800">Network Topology</h1>
+    <p class="text-gray-600 mt-2">Real-time visualization of switch relationships (drag, pan, zoom)</p>
   </header>
   
   <!-- Graph Container -->
-  <div class="bg-white rounded-lg shadow p-6">
-    <svg bind:this={svgElement}></svg>
-  </div>
+  <main class="flex justify-center items-center">
+    <div class="bg-white shadow rounded-lg w-full h-[80vh] overflow-hidden">
+      <svg bind:this={svgElement}></svg>
+    </div>
+  </main>
 </div>
