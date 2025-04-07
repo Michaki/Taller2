@@ -3,15 +3,18 @@ from datetime import datetime
 from aiokafka import AIOKafkaConsumer
 from app.api.endpoints.websocket import manager
 from app.utils.thresholds import determine_status
+from app.repositories.switch_repository import save_alert_log, save_switch_data
 
 async def consume_topics_for_websocket():
     """
-    Consumes messages from topics (like alerts_topic and healthy_topic) and also sends a topology update.
+    Consumes messages from topics (alerts_topic and healthy_topic),
+    persists each message to Elasticsearch, and broadcasts both
+    the data update and topology update over WebSockets.
     """
     topics = ["alerts_topic", "healthy_topic"]
     consumer = AIOKafkaConsumer(
         *topics,
-        bootstrap_servers="localhost:9093",  # use external listener if backend is on host
+        bootstrap_servers="localhost:9093",  # Use external listener if backend is on host
         group_id="websocket_broadcast_group",
         value_deserializer=lambda v: json.loads(v.decode("utf-8"))
     )
@@ -30,12 +33,19 @@ async def consume_topics_for_websocket():
                 )
                 message["status"] = status
 
+            # Persist the message to Elasticsearch based on its topic
+            if msg.topic == "alerts_topic":
+                await save_alert_log(message)
+            elif msg.topic == "healthy_topic":
+                await save_switch_data(message)
+
             # Broadcast the original message (alert or healthy update)
             await manager.broadcast({
                 "event": "data_update",
                 "data": message,
                 "timestamp": datetime.now().isoformat()
             })
+
             # Additionally, broadcast topology updates using switch_id and parent_switch_id.
             topology_message = {
                 "event": "topology_update",

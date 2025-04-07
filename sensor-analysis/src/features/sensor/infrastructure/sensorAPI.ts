@@ -1,10 +1,18 @@
 import axios from "axios";
-import type { AggregatedSwitchData } from "../domain/AggregatedSensorData";
 
-export async function fetchSwitches(): Promise<AggregatedSwitchData[]> {
-  const res = await axios.get("http://localhost:8000/switches/aggregated");
-  return res.data.records.map((record: any) => ({
-    id: record._id,
-    ...record._source,
-  }));
-}
+const BASE_URL = "http://localhost:8000";
+
+export const sensorAPI = {
+  async getAggregatedData() {
+    const res = await axios.get(`${BASE_URL}/switch/aggregated`);
+    return res.data;
+  },
+  async getAlertLogs() {
+    const res = await axios.get(`${BASE_URL}/switch/alerts`);
+    return res.data;
+  },
+  async getTopology() {
+    const res = await axios.get(`${BASE_URL}/switch/topology`);
+    return res.data;
+  },
+};

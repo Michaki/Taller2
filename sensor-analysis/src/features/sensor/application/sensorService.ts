@@ -1,6 +1,13 @@
-import { fetchSwitches } from "../infrastructure/sensorAPI";
-import type { AggregatedSwitchData } from "../domain/AggregatedSensorData";
+import { sensorAPI } from "../infrastructure/sensorAPI";
 
-export async function getSwitchData(): Promise<AggregatedSwitchData[]> {
-  return fetchSwitches();
-}
+export const sensorService = {
+  async getAlertLogs() {
+    return await sensorAPI.getAlertLogs();
+  },
+  async getTopology() {
+    return await sensorAPI.getTopology();
+  },
+  async getAggregatedSensorData() {
+    return await sensorAPI.getAggregatedData();
+  },
+};
