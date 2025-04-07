@@ -222,6 +222,8 @@ async def get_topology():
     """
     Constructs the topology from the stored switch data.
     Returns a dictionary with 'nodes' and 'edges'.
+    If an edge references a parent that is not in the node set,
+    adds that parent as a node with a default state.
     """
     # Query the switch_data index to get all documents.
     result = await es.search(index="switch_data", body={"query": {"match_all": {}}}, size=1000)
@@ -234,11 +236,15 @@ async def get_topology():
         doc = hit["_source"]
         sid = doc.get("switch_id")
         pid = doc.get("parent_switch_id")
-        # Create or update node; note the property name "nodeState"
+        # Create or update node for the switch
         if sid:
             nodes[sid] = {"id": sid, "label": sid, "nodeState": doc.get("status", "unknown")}
-        # Create an edge if there's a parent that is different than the switch id.
+        # If parent's id is given and is different than the switch,
+        # ensure the parent node exists, then create the edge.
         if pid and pid != sid:
+            # If parent not yet created, add it with a default state (e.g. "unknown")
+            if pid not in nodes:
+                nodes[pid] = {"id": pid, "label": pid, "nodeState": "unknown"}
             edges.append({"id": f"{pid}_{sid}", "source": pid, "target": sid})
     
     return {"nodes": list(nodes.values()), "edges": edges}
