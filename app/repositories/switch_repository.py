@@ -67,6 +67,87 @@ async def get_aggregated_bandwidth():
     avg_bandwidth_values = [bucket["avg_bandwidth"]["value"] for bucket in buckets]
     return timestamps, avg_bandwidth_values
 
+async def get_switch_state_summary():
+    """
+    Aggregates switch data from the 'switch_data' index by status and returns unique switch counts.
+    """
+    query = {
+        "size": 0,
+        "aggs": {
+            "by_status": {
+                "terms": {
+                    "field": "status.keyword",
+                    "size": 10
+                },
+                "aggs": {
+                    "unique_switches": {
+                        "cardinality": {
+                            "field": "switch_id.keyword"
+                        }
+                    }
+                }
+            }
+        }
+    }
+    result = await es.search(index="switch_data", body=query)
+    summary = {}
+    for bucket in result["aggregations"]["by_status"]["buckets"]:
+        summary[bucket["key"]] = bucket["unique_switches"]["value"]
+    return summary
+
+async def get_aggregated_bandwidth():
+    """
+    Aggregates the average bandwidth usage over time from the 'switch_data' index.
+    Returns arrays of timestamps and average bandwidth values.
+    """
+    query = {
+        "size": 0,
+        "aggs": {
+            "bandwidth_over_time": {
+                "date_histogram": {
+                    "field": "timestamp",
+                    "fixed_interval": "5m"
+                },
+                "aggs": {
+                    "avg_bandwidth": {
+                        "avg": { "field": "bandwidth_usage" }
+                    }
+                }
+            }
+        }
+    }
+    result = await es.search(index="switch_data", body=query)
+    buckets = result["aggregations"]["bandwidth_over_time"]["buckets"]
+    timestamps = [bucket["key_as_string"] for bucket in buckets]
+    avg_bandwidth_trend = [bucket["avg_bandwidth"]["value"] for bucket in buckets]
+    return timestamps, avg_bandwidth_trend
+
+async def get_overall_metrics():
+    """
+    Returns overall average metrics from the 'switch_data' index.
+    """
+    query = {
+        "size": 0,
+        "aggs": {
+            "avg_latency": { "avg": { "field": "latency" } },
+            "avg_packet_loss": { "avg": { "field": "packet_loss" } },
+            "avg_bandwidth": { "avg": { "field": "bandwidth_usage" } }
+        }
+    }
+    result = await es.search(index="switch_data", body=query)
+    metrics = {
+        "avg_latency": result["aggregations"]["avg_latency"]["value"],
+        "avg_packet_loss": result["aggregations"]["avg_packet_loss"]["value"],
+        "avg_bandwidth": result["aggregations"]["avg_bandwidth"]["value"]
+    }
+    return metrics
+
+async def get_alert_count():
+    """
+    Returns the total count of alert documents from the 'alert_logs' index.
+    """
+    result = await es.search(index="alert_logs", body={"query": {"match_all": {}}})
+    return len(result["hits"]["hits"])
 
 
 async def get_alert_logs():

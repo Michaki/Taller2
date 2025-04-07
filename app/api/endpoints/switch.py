@@ -1,14 +1,14 @@
 from fastapi import APIRouter, HTTPException
 from app.repositories.switch_repository import (
-    get_all_aggregated_switch_data,
-    get_aggregated_switch_data_count,
+    get_overall_metrics,
+    get_alert_count,
     get_alert_logs,
     get_alert_insights,
     clear_all_documents,
     get_topology,
     get_all,
-    get_alert_logs_count,
-    get_aggregated_bandwidth
+    get_aggregated_bandwidth,
+    get_switch_state_summary
 )
 
 router = APIRouter()
@@ -19,23 +19,22 @@ async def root():
 
 @router.get("/aggregated")
 async def aggregated_switches():
-    # Fetch healthy switch data
-    healthy_records = await get_all_aggregated_switch_data()
-    healthy_count = await get_aggregated_switch_data_count()
-    # Fetch alert logs (we can simply count them rather than return full details)
-    alert_logs = await get_alert_logs()
-    alert_count = await get_alert_logs_count()
-    # Fetch aggregated bandwidth data
-    timestamps, bandwidth_data = await get_aggregated_bandwidth()
-    
-    return {
-        "healthy_count": healthy_count,
-        "healthy_records": healthy_records,
-        "alert_logs": alert_logs,
-        "alert_count": alert_count,
-        "avg_bandwidth": bandwidth_data,
-        "timestamps": timestamps
-    }
+    try:
+        state_summary = await get_switch_state_summary()
+        timestamps, avg_bandwidth_trend = await get_aggregated_bandwidth()
+        overall_metrics = await get_overall_metrics()
+        alert_count = await get_alert_count()
+        
+        # Return only the necessary data for the dashboard
+        return {
+            "state_summary": state_summary,          
+            "alert_count": alert_count,              
+            "timestamps": timestamps,                
+            "avg_bandwidth_trend": avg_bandwidth_trend,
+            "overall_metrics": overall_metrics       
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/all")
 async def all_switches():
