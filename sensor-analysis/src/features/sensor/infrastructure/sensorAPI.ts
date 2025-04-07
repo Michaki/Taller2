@@ -7,8 +7,10 @@ export const sensorAPI = {
     const res = await axios.get(`${BASE_URL}/switch/aggregated`);
     return res.data;
   },
-  async getAlertLogs() {
-    const res = await axios.get(`${BASE_URL}/switch/alerts`);
+  async getAlertLogs(currentPage: number, pageSize: number, filter: string) {
+    const res = await axios.get(`${BASE_URL}/switch/alerts`, {
+      params: { page: currentPage, page_size: pageSize, search: filter },
+    });
     return res.data;
   },
   async getTopology() {

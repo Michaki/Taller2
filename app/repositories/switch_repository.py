@@ -142,18 +142,30 @@ async def get_overall_metrics():
     }
     return metrics
 
-async def get_alert_count():
+async def get_alert_logs(page: int = 1, page_size: int = 10, search: str = None):
     """
-    Returns the total count of alert documents from the 'alert_logs' index.
+    Retrieves alert logs with pagination and optional search.
+    Uses a query_string query to allow partial matching on switch_id, status, and details.
+    Returns the raw Elasticsearch result.
     """
-    result = await es.search(index="alert_logs", body={"query": {"match_all": {}}})
-    return len(result["hits"]["hits"])
+    from_value = (page - 1) * page_size
+    if search:
+        # Wrap the search term in wildcards for partial matching
+        query = {
+            "query": {
+                "query_string": {
+                    "query": f"*{search}*",
+                    "fields": ["switch_id", "status", "details"]
+                }
+            }
+        }
+    else:
+        query = {"query": {"match_all": {}}}
+        
+    result = await es.search(index="alert_logs", body=query, from_=from_value, size=page_size)
+    return result
 
 
-async def get_alert_logs():
-    result = await es.search(index="alert_logs", body={"query": {"match_all": {}}})
-    logs = [hit["_source"] for hit in result["hits"]["hits"]]
-    return logs
 
 async def get_alert_logs_count():
     result = await es.count(index="alert_logs")
