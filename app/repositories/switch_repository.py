@@ -90,7 +90,11 @@ async def get_switch_state_summary():
         }
     }
     result = await es.search(index="switch_data", body=query)
-    summary = {}
+    summary = {
+         "healthy":   0,
+        "warning":   0,
+        "unhealthy": 0
+    }
     for bucket in result["aggregations"]["by_status"]["buckets"]:
         summary[bucket["key"]] = bucket["unique_switches"]["value"]
     return summary

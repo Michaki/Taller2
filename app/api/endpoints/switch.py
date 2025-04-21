@@ -21,6 +21,7 @@ async def root():
 async def aggregated_switches():
     try:
         state_summary = await get_switch_state_summary()
+        print("State summary:", state_summary)
         timestamps, avg_bandwidth_trend = await get_aggregated_bandwidth()
         overall_metrics = await get_overall_metrics()
         alert_count = await get_alert_logs_count()

@@ -11,7 +11,7 @@ async def consume_topics_for_websocket():
     persists each message to Elasticsearch, and broadcasts both
     the data update and topology update over WebSockets.
     """
-    topics = ["alerts_topic", "healthy_topic"]
+    topics = ["healthy_topic", "warning_topic", "unhealthy_topic","alerts_topic"]
     consumer = AIOKafkaConsumer(
         *topics,
         bootstrap_servers="localhost:9093",  # Use external listener if backend is on host
@@ -34,10 +34,9 @@ async def consume_topics_for_websocket():
                 message["status"] = status
 
             # Persist the message to Elasticsearch based on its topic
+            await save_switch_data(message)
             if msg.topic == "alerts_topic":
                 await save_alert_log(message)
-            elif msg.topic == "healthy_topic":
-                await save_switch_data(message)
 
             # Broadcast the original message (alert or healthy update)
             await manager.broadcast({

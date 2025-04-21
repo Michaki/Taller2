@@ -114,6 +114,7 @@ services:
       SOURCE_TOPIC: switch_data_topic
       ALERTS_TOPIC: alerts_topic
       HEALTHY_TOPIC: healthy_topic
+      WARNING_TOPIC: warning_topic
     networks:
       - dev-net
 

@@ -3,7 +3,17 @@ export type TopologyUpdateCallback = (msg: {
   switch_id: string;
   state: string;
 }) => void;
-
+export type AggregatedUpdateCallback = (data: {
+  state_summary: { healthy: number; warning: number; unhealthy: number };
+  alert_count: number;
+  timestamps: string[];
+  avg_bandwidth_trend: number[];
+  overall_metrics: {
+    avg_latency: number;
+    avg_packet_loss: number;
+    avg_bandwidth: number;
+  };
+}) => void;
 const WEBSOCKET_URL = `ws://localhost:8000`;
 
 class SensorWebSocket {
