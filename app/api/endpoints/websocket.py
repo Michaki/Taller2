@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from app.core.websocket_manager import manager
 import json
@@ -54,6 +55,21 @@ async def alerts_endpoint(websocket: WebSocket):
 async def dashboard_ws(websocket: WebSocket):
     # Registrar la conexión
     await manager.connect(websocket)
+# Mensaje de prueba con claves literales válidas
+    await websocket.send_json({
+      "event": "aggregated",
+      "data": {
+        "state_summary":   { "healthy": 1, "warning": 0, "unhealthy": 0 },
+        "alert_count":     0,
+        "timestamps":      [],
+        "avg_bandwidth_trend": [],
+        "overall_metrics": {
+          "avg_latency":     0,
+          "avg_packet_loss": 0,
+          "avg_bandwidth":   0
+        }
+      }
+    })
     try:
         while True:
             # 1) Obtener datos actuales
