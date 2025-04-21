@@ -79,7 +79,7 @@ Note: this has to be run in the root directory of the project.
 It needs to run migrations to set up the database seed data and index, to run the migrations, use the following command:
 
 ```bash
-python manage.py all
+python manage.py migrate
 ```
 
 You need to have the `manage.py` file in the root directory of the project. This file is used to manage database migrations and other tasks.
